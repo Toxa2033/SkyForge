@@ -29,19 +29,19 @@
                     id="ToggleRemoteBuildsAction"
                     class="com.luigivampa92.remoteandroidbuilds.ideplugin.actions.ToggleRemoteBuildsAction"
                     text="Toggle Remote Builds"
-                    icon="AllIcons.Webreferences.Server"
+                    icon="/icons/server.svg"
                     description="Control remote builds mode" />
             <action
                     id="OpenPluginSettingsAction"
                     class="com.luigivampa92.remoteandroidbuilds.ideplugin.actions.OpenPluginSettingsAction"
                     text="Remote Build Configurations"
-                    icon="AllIcons.General.GearHover"
+                    icon="/icons/settings.svg"
                     description="Edit remote builds configurations" />
             <action
                     id="PrepareServerAction"
                     class="com.luigivampa92.remoteandroidbuilds.ideplugin.actions.PrepareServerAction"
                     text="Prepare Server For Builds"
-                    icon="AllIcons.Debugger.Console"
+                    icon="/icons/console.svg"
                     description="Prepare server to run android builds" />
             <add-to-group
                     group-id="ToolbarRunGroup"
