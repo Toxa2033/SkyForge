@@ -64,9 +64,14 @@ public class EnableRemoteBuildsTask extends Task.Backgroundable {
 
         ProjectPathValues currentProjectPathValues = getCurrentProjectPathValues(myProject);
 
-        boolean projectPropertiesOnServerPrepared = sshExecutor.prepareLocalPropertiesOnServer(configuration.getSshAlias(), configuration.getSshUserName(), currentProjectPathValues.getDir());
-        if (!projectPropertiesOnServerPrepared) {
-            throw new RuntimeException("Failed to setup project properties on build server");
+        boolean projectLocalPropertiesOnServerPrepared = sshExecutor.overridePropertiesOnServer(configuration.getSshAlias(), configuration.getSshUserName(), currentProjectPathValues.getDir(), configuration.getLocalProperties(), "local.properties");
+        if (!projectLocalPropertiesOnServerPrepared) {
+            throw new RuntimeException("Failed to setup project local properties on build server");
+        }
+
+        boolean projectGradlePropertiesOnServerPrepared = sshExecutor.overridePropertiesOnServer(configuration.getSshAlias(), configuration.getSshUserName(), currentProjectPathValues.getDir(), configuration.getGradleProperties(), "gradle.properties");
+        if (!projectGradlePropertiesOnServerPrepared) {
+            throw new RuntimeException("Failed to setup project gradle properties on build server");
         }
 
         boolean keystorePrepared = sshExecutor.uploadDebugKeystoreToServer(configuration.getSshAlias(), configuration.getSshUserName());

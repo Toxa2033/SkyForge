@@ -36,8 +36,8 @@ public final class RemoteBuildsConfigurationPersistentStateService implements Pe
     String proxyPort;
     boolean extraSdkDependenciesRequired;
     String sdkDependencies;
-
-    // TODO : can getters and setters be removed?
+    String localProperties;
+    String gradleProperties;
 
     public String getSshAlias() {
         return sshAlias;
@@ -93,5 +93,21 @@ public final class RemoteBuildsConfigurationPersistentStateService implements Pe
 
     public void setSdkDependencies(String sdkDependencies) {
         this.sdkDependencies = sdkDependencies;
+    }
+
+    public String getLocalProperties() {
+        return localProperties;
+    }
+
+    public void setLocalProperties(String localProperties) {
+        this.localProperties = localProperties;
+    }
+
+    public String getGradleProperties() {
+        return gradleProperties;
+    }
+
+    public void setGradleProperties(String gradleProperties) {
+        this.gradleProperties = gradleProperties;
     }
 }

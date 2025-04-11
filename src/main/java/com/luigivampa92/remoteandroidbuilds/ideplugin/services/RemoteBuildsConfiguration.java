@@ -12,6 +12,8 @@ public final class RemoteBuildsConfiguration {
     private final String proxyPort;
     private final boolean extraSdkDependenciesRequired;
     private final String sdkDependencies;
+    private final String localProperties;
+    private final String gradleProperties;
 
     public RemoteBuildsConfiguration() {
         this.sshAlias = null;
@@ -21,6 +23,8 @@ public final class RemoteBuildsConfiguration {
         this.proxyPort = null;
         this.extraSdkDependenciesRequired = false;
         this.sdkDependencies = null;
+        this.localProperties = null;
+        this.gradleProperties = null;
     }
 
     public RemoteBuildsConfiguration(String sshAlias, String sshUserName, String sshUserPassword, boolean proxyRequired, String proxyPort, boolean extraSdkDependenciesRequired, String sdkDependencies) {
@@ -31,6 +35,20 @@ public final class RemoteBuildsConfiguration {
         this.proxyPort = proxyPort;
         this.extraSdkDependenciesRequired = extraSdkDependenciesRequired;
         this.sdkDependencies = sdkDependencies;
+        this.localProperties = null;
+        this.gradleProperties = null;
+    }
+
+    public RemoteBuildsConfiguration(String sshAlias, String sshUserName, String sshUserPassword, boolean proxyRequired, String proxyPort, boolean extraSdkDependenciesRequired, String sdkDependencies, String localProperties, String gradleProperties) {
+        this.sshAlias = sshAlias;
+        this.sshUserName = sshUserName;
+        this.sshUserPassword = sshUserPassword;
+        this.proxyRequired = proxyRequired;
+        this.proxyPort = proxyPort;
+        this.extraSdkDependenciesRequired = extraSdkDependenciesRequired;
+        this.sdkDependencies = sdkDependencies;
+        this.localProperties = localProperties;
+        this.gradleProperties = gradleProperties;
     }
 
     public boolean isSshSettingsValid() {
@@ -124,6 +142,14 @@ public final class RemoteBuildsConfiguration {
         return sdkDependencies;
     }
 
+    public String getLocalProperties() {
+        return localProperties;
+    }
+
+    public String getGradleProperties() {
+        return gradleProperties;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -134,11 +160,13 @@ public final class RemoteBuildsConfiguration {
                 Objects.equals(sshUserName, that.sshUserName) &&
                 Objects.equals(sshUserPassword, that.sshUserPassword) &&
                 Objects.equals(proxyPort, that.proxyPort) &&
-                Objects.equals(sdkDependencies, that.sdkDependencies);
+                Objects.equals(sdkDependencies, that.sdkDependencies) &&
+                Objects.equals(localProperties, that.localProperties) &&
+                Objects.equals(gradleProperties, that.gradleProperties);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(sshAlias, sshUserName, sshUserPassword, proxyRequired, proxyPort, extraSdkDependenciesRequired, sdkDependencies);
+        return Objects.hash(sshAlias, sshUserName, sshUserPassword, proxyRequired, proxyPort, extraSdkDependenciesRequired, sdkDependencies, localProperties, gradleProperties);
     }
 }

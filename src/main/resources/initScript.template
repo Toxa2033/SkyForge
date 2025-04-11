@@ -29,6 +29,7 @@ rootProject {
             excludeCommon += ["**/.git/"]
             excludeCommon += ["**/.gitignore"]
             excludeCommon += ["**/local.properties"]
+            excludeCommon += ["**/gradle.properties"]
             excludeCommon += ["**/backup_*.gradle"]
             excludeLocal += ["**/build/"]
             excludeLocal += ["*.apk"]

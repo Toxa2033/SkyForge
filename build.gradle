@@ -1,10 +1,13 @@
 plugins {
     id 'java'
     id 'org.jetbrains.intellij.platform' version '2.5.0'
+    id 'org.jetbrains.kotlin.jvm' version '2.1.20'
 }
 
+import org.gradle.jvm.toolchain.JavaLanguageVersion
+
 group 'com.luigivampa92.remoteandroidbuilds'
-version '0.4.1'
+version '0.5.0'
 
 sourceCompatibility = 17
 targetCompatibility = 17
@@ -55,12 +58,19 @@ tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
 }
 
+tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+}
+
 dependencies {
     intellijPlatform {
         local('/Users/nazarov/Applications/Android Studio.app/Contents')
         bundledPlugins(['org.jetbrains.android'])
         javaCompiler()
     }
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
 }
 
 intellijPlatform {

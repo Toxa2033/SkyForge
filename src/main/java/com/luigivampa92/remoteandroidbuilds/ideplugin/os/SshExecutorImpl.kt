@@ -1,153 +1,138 @@
-package com.luigivampa92.remoteandroidbuilds.ideplugin.os;
+package com.luigivampa92.remoteandroidbuilds.ideplugin.os
 
-import com.github.markusbernhardt.proxy.util.PlatformUtil;
-import com.luigivampa92.remoteandroidbuilds.ideplugin.FileManager;
+import com.github.markusbernhardt.proxy.util.PlatformUtil
+import com.luigivampa92.remoteandroidbuilds.ideplugin.FileManager
 
-import java.util.List;
+class SshExecutorImpl(
+    private val fileManager: FileManager,
+    private val processListRetriever: ProcessListRetriever,
+    private val processKiller: ProcessKiller
+) : SshExecutor {
 
-public final class SshExecutorImpl implements SshExecutor {
+    private val shellExecutor = RcOnlyShellExecutor()
 
-    public static final String DELIMETER = ";";
-    public static final String CMD_TEMPLATE_SSH_VERSION = "%s -V";
-    public static final String CMD_TEMPLATE_SSH_CHECK_CONNECTION = "%s -q -o StrictHostKeyChecking=no -o BatchMode=yes -o ConnectTimeout=5 %s exit";
-    public static final String CMD_TEMPLATE_SSH_PREPARE_LOCAL_PROPERTIES_USER_NORMAL = "%s %s mkdir -p /home/%s/.mirakle/%s ; echo sdk.dir=/home/%s/Android/Sdk > /home/%s/.mirakle/%s/local.properties";
-    public static final String CMD_TEMPLATE_SSH_PREPARE_LOCAL_PROPERTIES_USER_ROOT = "%s %s mkdir -p /root/.mirakle/%s ; echo sdk.dir=/root/Android/Sdk > /root/.mirakle/%s/local.properties";
-    public static final String CMD_TEMPLATE_SSH_PREPARE_DEBUG_KEYSTORE_FOLDER_USER_NORMAL = "%s %s mkdir -p /home/%s/.android";
-    public static final String CMD_TEMPLATE_SSH_PREPARE_DEBUG_KEYSTORE_FOLDER_USER_ROOT = "%s %s mkdir -p /root/.android";
-    public static final String CMD_TEMPLATE_SCP_UPLOAD_DEBUG_KEYSTORE = "%s %s %s:~/.android/debug.keystore";
-
-    public static final String CMD_TEMPLATE_SSH_START_TUNNEL = "%s -o ExitOnForwardFailure=yes -f -N %s -R %s:localhost:%s";
-    public static final String CMD_TEMPLATE_RSYNC_VERSION = "%s --version";
-
-    private final RcOnlyShellExecutor shellExecutor = new RcOnlyShellExecutor();
-    private final FileManager fileManager;
-    private final ProcessListRetriever processListRetriever;
-    private final ProcessKiller processKiller;
-
-    public SshExecutorImpl(FileManager fileManager, ProcessListRetriever processListRetriever, ProcessKiller processKiller) {
-        this.fileManager = fileManager;
-        this.processListRetriever = processListRetriever;
-        this.processKiller = processKiller;
+    override fun checkSshExists(): Boolean {
+        val commandSshVersion = CMD_TEMPLATE_SSH_VERSION.format(getSshExecutableValueForPlatform())
+        val result = shellExecutor.execute(commandSshVersion)
+        return result.exitCode == 0
     }
 
-    @Override
-    public boolean checkSshExists() {
-        String commandSshVersion = String.format(CMD_TEMPLATE_SSH_VERSION, getSshExecutableValueForPlatform());
-        ShellExecutionResult result = shellExecutor.execute(commandSshVersion);
-        return result.getExitCode() == 0;
+    override fun checkSshConnection(sshAlias: String): Boolean {
+        val commandSshConnectionTest = CMD_TEMPLATE_SSH_CHECK_CONNECTION.format(getSshExecutableValueForPlatform(), sshAlias)
+        val result = shellExecutor.execute(commandSshConnectionTest)
+        return result.exitCode == 0
     }
 
-    @Override
-    public boolean checkSshConnection(String sshAlias) {
-        String commandSshConnectionTest = String.format(CMD_TEMPLATE_SSH_CHECK_CONNECTION, getSshExecutableValueForPlatform(), sshAlias);
-        ShellExecutionResult result = shellExecutor.execute(commandSshConnectionTest);
-        return result.getExitCode() == 0;
-    }
-
-    @Override
-    public boolean prepareLocalPropertiesOnServer(String sshAlias, String sshUser, String projectDirName) {
-        String commandSshPrepareLocalProperties;
-        if (sshUser.equals("root")) {
-            commandSshPrepareLocalProperties = String.format(CMD_TEMPLATE_SSH_PREPARE_LOCAL_PROPERTIES_USER_ROOT, getSshExecutableValueForPlatform(), sshAlias, projectDirName, projectDirName);
+    override fun overridePropertiesOnServer(
+        sshAlias: String, 
+        sshUser: String, 
+        projectDirName: String, 
+        properties: String, 
+        fileName: String
+    ): Boolean {
+        val workingDir = if ("root" == sshUser) {
+            CMD_TEMPLATE_SSH_ROOT_WORKING_DIR.format(projectDirName)
         } else {
-            commandSshPrepareLocalProperties = String.format(CMD_TEMPLATE_SSH_PREPARE_LOCAL_PROPERTIES_USER_NORMAL, getSshExecutableValueForPlatform(), sshAlias, sshUser, projectDirName, sshUser, sshUser, projectDirName);
+            CMD_TEMPLATE_SSH_WORKING_DIR.format(sshUser, projectDirName)
         }
-        ShellExecutionResult result = shellExecutor.execute(commandSshPrepareLocalProperties);
-        return result.getExitCode() == 0;
+        val sshAction = getSshExecutableValueForPlatform()
+        val prettifyProp = properties.lines().joinToString(separator = "\\n")
+        val command = "$sshAction $sshAlias mkdir -p $workingDir ; echo \"$prettifyProp\" > $workingDir/$fileName"
+
+        val result = shellExecutor.execute(command)
+        return result.exitCode == 0
     }
 
-    @Override
-    public boolean uploadDebugKeystoreToServer(String sshAlias, String user) {
-        String androidDebugKeystoreFile = fileManager.getAndroidDebugKeystoreFilePath();
-        if (androidDebugKeystoreFile != null && !androidDebugKeystoreFile.isEmpty()) {
-            String commandPrepareAndroidDebugKeystoreFolder = null;
-            if ("root".equals(user)) {
-                commandPrepareAndroidDebugKeystoreFolder = String.format(CMD_TEMPLATE_SSH_PREPARE_DEBUG_KEYSTORE_FOLDER_USER_ROOT, getSshExecutableValueForPlatform(), sshAlias);
+    override fun uploadDebugKeystoreToServer(sshAlias: String, user: String): Boolean {
+        val androidDebugKeystoreFile = fileManager.androidDebugKeystoreFilePath
+        if (!androidDebugKeystoreFile.isNullOrEmpty()) {
+            val commandPrepareAndroidDebugKeystoreFolder = if ("root" == user) {
+                CMD_TEMPLATE_SSH_PREPARE_DEBUG_KEYSTORE_FOLDER_USER_ROOT.format(getSshExecutableValueForPlatform(), sshAlias)
             } else {
-                commandPrepareAndroidDebugKeystoreFolder = String.format(CMD_TEMPLATE_SSH_PREPARE_DEBUG_KEYSTORE_FOLDER_USER_NORMAL, getSshExecutableValueForPlatform(), sshAlias, user);
+                CMD_TEMPLATE_SSH_PREPARE_DEBUG_KEYSTORE_FOLDER_USER_NORMAL.format(getSshExecutableValueForPlatform(), sshAlias, user)
             }
-            ShellExecutionResult prepareAndroidDebugKeystoreFolderResult = shellExecutor.execute(commandPrepareAndroidDebugKeystoreFolder, 15000);
-            if (prepareAndroidDebugKeystoreFolderResult.getExitCode() != 0) {
-                return false;
+            
+            val prepareAndroidDebugKeystoreFolderResult = shellExecutor.execute(commandPrepareAndroidDebugKeystoreFolder, 15000)
+            if (prepareAndroidDebugKeystoreFolderResult.exitCode != 0) {
+                return false
             }
-            String osAwareAndroidDebugKeystoreFile = FileManager.fixFilePathForWindowsCygwin(androidDebugKeystoreFile);
-            String commandTransferAndroidKeystore = String.format(CMD_TEMPLATE_SCP_UPLOAD_DEBUG_KEYSTORE, getScpExecutableValueForPlatform(), osAwareAndroidDebugKeystoreFile, sshAlias);
-            ShellExecutionResult result = shellExecutor.execute(commandTransferAndroidKeystore, 15000);
-            return result.getExitCode() == 0;
+            
+            val osAwareAndroidDebugKeystoreFile = FileManager.fixFilePathForWindowsCygwin(androidDebugKeystoreFile)
+            val commandTransferAndroidKeystore = CMD_TEMPLATE_SCP_UPLOAD_DEBUG_KEYSTORE.format(getScpExecutableValueForPlatform(), osAwareAndroidDebugKeystoreFile, sshAlias)
+            val result = shellExecutor.execute(commandTransferAndroidKeystore, 15000)
+            return result.exitCode == 0
         } else {
-            return false;
+            return false
         }
     }
 
-    @Override
-    public boolean startSshTunnelOnPort(String sshAlias, int port) {
+    override fun startSshTunnelOnPort(sshAlias: String, port: Int): Boolean {
         if (port < 1 || port > 65535) {
-            return false;
+            return false
         }
-        String portValue = String.valueOf(port);
-        String commandSshStartTunnel = String.format(CMD_TEMPLATE_SSH_START_TUNNEL, getSshExecutableValueForPlatform(), sshAlias, portValue, portValue);
-        ShellExecutionResult result = shellExecutor.execute(commandSshStartTunnel);
-        return result.getExitCode() == 0;
+        val portValue = port.toString()
+        val commandSshStartTunnel = CMD_TEMPLATE_SSH_START_TUNNEL.format(getSshExecutableValueForPlatform(), sshAlias, portValue, portValue)
+        val result = shellExecutor.execute(commandSshStartTunnel)
+        return result.exitCode == 0
     }
 
-    @Override
-    public boolean stopSshTunnelsOnPorts(List<Integer> ports) {
-        try {
-            List<ProcessRecord> sshTunnelProcesses = processListRetriever.getSshProcessesOnPorts(ports);
-            for (ProcessRecord process : sshTunnelProcesses) {
-                processKiller.kill(process.getPid(), false);
+    override fun stopSshTunnelsOnPorts(ports: List<Int>): Boolean {
+        return try {
+            val sshTunnelProcesses = processListRetriever.getSshProcessesOnPorts(ports)
+            for (process in sshTunnelProcesses) {
+                processKiller.kill(process.pid, false)
             }
-            return true;
-        } catch (Throwable e) {
-            return false;
+            true
+        } catch (e: Throwable) {
+            false
         }
     }
 
-    @Override
-    public boolean checkRsyncExists() {
-        String commandRsyncVersion = String.format(CMD_TEMPLATE_RSYNC_VERSION, getRsyncExecutableValueForPlatform());
-        ShellExecutionResult result = shellExecutor.execute(commandRsyncVersion);
-        return result.getExitCode() == 0;
+    override fun checkRsyncExists(): Boolean {
+        val commandRsyncVersion = CMD_TEMPLATE_RSYNC_VERSION.format(getRsyncExecutableValueForPlatform())
+        val result = shellExecutor.execute(commandRsyncVersion)
+        return result.exitCode == 0
     }
-
-
 
     // on windows only cygwin or wsl binaries work as intended
     // default C:\\Windows\\System\\OpenSSH\\ssh.exe cannot create gateway ports and thus useless
-
-    private String getSshExecutableValueForPlatform() {
-        PlatformUtil.Platform platform = PlatformUtil.getCurrentPlattform();
-        if (PlatformUtil.Platform.MAC_OS.equals(platform) || PlatformUtil.Platform.LINUX.equals(platform)) {
-            return "ssh";
-        } else if (PlatformUtil.Platform.WIN.equals(platform)) {
-//            return "ssh.exe";
-            return "ssh";
-        } else {
-            throw new RuntimeException("Current platform is not supported");
+    private fun getSshExecutableValueForPlatform(): String {
+        val platform = PlatformUtil.getCurrentPlattform()
+        return when (platform) {
+            PlatformUtil.Platform.MAC_OS, PlatformUtil.Platform.LINUX -> "ssh"
+            PlatformUtil.Platform.WIN -> "ssh"
+            else -> throw RuntimeException("Current platform is not supported")
         }
     }
 
-    private String getScpExecutableValueForPlatform() {
-        PlatformUtil.Platform platform = PlatformUtil.getCurrentPlattform();
-        if (PlatformUtil.Platform.MAC_OS.equals(platform) || PlatformUtil.Platform.LINUX.equals(platform)) {
-            return "scp";
-        } else if (PlatformUtil.Platform.WIN.equals(platform)) {
-//            return "scp.exe";
-            return "scp";
-        } else {
-            throw new RuntimeException("Current platform is not supported");
+    private fun getScpExecutableValueForPlatform(): String {
+        val platform = PlatformUtil.getCurrentPlattform()
+        return when (platform) {
+            PlatformUtil.Platform.MAC_OS, PlatformUtil.Platform.LINUX -> "scp"
+            PlatformUtil.Platform.WIN -> "scp"
+            else -> throw RuntimeException("Current platform is not supported")
         }
     }
 
-    private String getRsyncExecutableValueForPlatform() {
-        PlatformUtil.Platform platform = PlatformUtil.getCurrentPlattform();
-        if (PlatformUtil.Platform.MAC_OS.equals(platform) || PlatformUtil.Platform.LINUX.equals(platform)) {
-            return "rsync";
-        } else if (PlatformUtil.Platform.WIN.equals(platform)) {
-//            return "rsync.exe";
-            return "rsync";
-        } else {
-            throw new RuntimeException("Current platform is not supported");
+    private fun getRsyncExecutableValueForPlatform(): String {
+        val platform = PlatformUtil.getCurrentPlattform()
+        return when (platform) {
+            PlatformUtil.Platform.MAC_OS, PlatformUtil.Platform.LINUX -> "rsync"
+            PlatformUtil.Platform.WIN -> "rsync"
+            else -> throw RuntimeException("Current platform is not supported")
         }
+    }
+
+    companion object {
+        const val DELIMETER = ";"
+        const val CMD_TEMPLATE_SSH_WORKING_DIR = "/home/%s/.mirakle/%s/"
+        const val CMD_TEMPLATE_SSH_ROOT_WORKING_DIR = "/root/.mirakle/%s/"
+        const val CMD_TEMPLATE_SSH_VERSION = "%s -V"
+        const val CMD_TEMPLATE_SSH_CHECK_CONNECTION = "%s -q -o StrictHostKeyChecking=no -o BatchMode=yes -o ConnectTimeout=5 %s exit"
+        const val CMD_TEMPLATE_SSH_PREPARE_DEBUG_KEYSTORE_FOLDER_USER_NORMAL = "%s %s mkdir -p /home/%s/.android"
+        const val CMD_TEMPLATE_SSH_PREPARE_DEBUG_KEYSTORE_FOLDER_USER_ROOT = "%s %s mkdir -p /root/.android"
+        const val CMD_TEMPLATE_SCP_UPLOAD_DEBUG_KEYSTORE = "%s %s %s:~/.android/debug.keystore"
+        const val CMD_TEMPLATE_SSH_START_TUNNEL = "%s -o ExitOnForwardFailure=yes -f -N %s -R %s:localhost:%s"
+        const val CMD_TEMPLATE_RSYNC_VERSION = "%s --version"
     }
 }

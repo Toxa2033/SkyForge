@@ -19,7 +19,9 @@ public final class RemoteBuildConfigurationServicePersistentStateImpl implements
                         state.proxyRequired,
                         state.proxyPort,
                         state.extraSdkDependenciesRequired,
-                        state.sdkDependencies
+                        state.sdkDependencies,
+                        state.localProperties,
+                        state.gradleProperties
                 );
             } else {
                 return null;
@@ -39,6 +41,8 @@ public final class RemoteBuildConfigurationServicePersistentStateImpl implements
             persistentState.setProxyPort(configuration.getProxyPort());
             persistentState.setExtraSdkDependenciesRequired(configuration.isExtraSdkDependenciesRequired());
             persistentState.setSdkDependencies(configuration.getSdkDependencies());
+            persistentState.setLocalProperties(configuration.getLocalProperties());
+            persistentState.setGradleProperties(configuration.getGradleProperties());
             persistentState.loadState(persistentState);
         }
     }
