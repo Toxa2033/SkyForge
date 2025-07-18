@@ -6,7 +6,7 @@ initscript {
         mavenCentral()
     }
     dependencies {
-        classpath 'com.luigivampa92:mirakle:1.6.1-02-SNPANSHOT22'
+        classpath 'com.luigivampa92:mirakle:1.6.1-02-SNPANSHOT31'
     }
 }
 

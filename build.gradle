@@ -5,7 +5,7 @@ plugins {
 }
 
 group 'com.luigivampa92.remoteandroidbuilds'
-version '0.5.1'
+version '0.5.2'
 
 sourceCompatibility = 17
 targetCompatibility = 17
